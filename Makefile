@@ -1,5 +1,7 @@
+spdlog_version = 1.3.1
+
 GXX     = g++
-CFLAGS  = -I. -O2
+CFLAGS  = -I. -I./spdlog-$(spdlog_version)/include -O2
 LDFLAGS = -std=c++11 -lstdc++ -lpthread -ldl
 
 app_name                := laser
@@ -9,7 +11,7 @@ docker_container        := $(app_name)
 
 .PHONY: test
 test:
-	$(GXX) $(CFLAGS) test.cpp radar.cpp loguru.cpp $(LDFLAGS) -o $@
+	$(GXX) $(CFLAGS) test.cpp radar.cpp $(LDFLAGS) -o $@
 
 .PHONY: upgrade
 upgrade:

@@ -9,8 +9,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include <loguru.hpp>
+// #include <loguru.hpp>
 #include <radar.hpp>
+#include <spdlog/spdlog.h>
 
 using namespace LaserRadar;
 
@@ -19,7 +20,7 @@ int main(int argc, char const *argv[]) {
   radar.startup(12301);
   int sock = 0;
   if ((sock = socket(AF_INET, SOCK_STREAM, 0)) < 0) {
-    LOG_F(ERROR, "Create socket error");
+    spdlog::error("Create socket error");
     return -1;
   }
 
@@ -30,12 +31,12 @@ int main(int argc, char const *argv[]) {
   serv_addr.sin_port   = htons(12301);
 
   if (inet_pton(AF_INET, "127.0.0.1", &serv_addr.sin_addr) <= 0) {
-    LOG_F(ERROR, "Invalid address not supported");
+    spdlog::error("Invalid address not supported");
     return -1;
   }
   std::this_thread::sleep_for(std::chrono::seconds(1));
   if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-    LOG_F(ERROR, "Connection failed");
+    spdlog::error("Connection failed");
     return -1;
   }
 
