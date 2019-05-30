@@ -9,6 +9,11 @@ docker_name             := $(app_name)
 docker_tag              := dev
 docker_container        := $(app_name)
 
+.PHONY: all
+all:
+	$(GXX) -c -fPIC $(CFLAGS) radar.cpp $(LDFLAGS) -o radar.o
+	$(GXX) -shared radar.o -o radar.so
+
 .PHONY: test
 test:
 	$(GXX) $(CFLAGS) test.cpp radar.cpp $(LDFLAGS) -o $@

@@ -9,7 +9,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-// #include <loguru.hpp>
 #include <radar.hpp>
 #include <spdlog/spdlog.h>
 
