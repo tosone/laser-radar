@@ -1,0 +1,11 @@
+version: "3"
+
+services:
+  laser:
+    container_name: laser
+    image: laser:dev
+    restart: always
+    volumes:
+      - $PWD:/app
+    hostname: laser
+    tty: true
