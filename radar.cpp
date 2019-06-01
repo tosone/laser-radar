@@ -86,6 +86,7 @@ int Radar::startup(int p) {
             }
             std::cout << std::endl;
           }
+          free(buffer);
         }
       },
       &laser_radar_socket, std::move(futureObj), std::move(output_stream));

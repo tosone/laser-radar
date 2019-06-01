@@ -23,7 +23,7 @@ private:
   std::ofstream output_stream;
 
 public:
-  // constructor
+  // constructor set output filename
   Radar(std::string);
 
   // running or not
