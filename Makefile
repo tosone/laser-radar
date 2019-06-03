@@ -17,7 +17,11 @@ all: clean
 
 .PHONY: test
 test: clean
-	$(GXX) $(CFLAGS) test.cpp radar.cpp $(LDFLAGS) -o $@
+	$(GXX) $(CFLAGS) example.cpp radar.cpp $(LDFLAGS) -o $@
+
+.PHONY: pack
+pack: all test
+	doxygen Doxyfile && tar zcvf radar.tar.gz html lib$(TAGET).so test radar.hpp
 
 .PHONY: upgrade
 upgrade:
@@ -37,4 +41,4 @@ exec:
 
 .PHONY: clean
 clean:
-	@$(RM) *.so *.o test
+	@$(RM) *.so *.o *.tar.gz

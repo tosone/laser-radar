@@ -6,7 +6,7 @@ RUN sed -i 's/archive.ubuntu.com/mirrors.163.com/g' /etc/apt/sources.list && \
 RUN apt-get update && apt-get upgrade -y && \
   apt-get install -y --no-install-recommends \
   bc tree vim bash-completion apt-utils man-db fish \
-  build-essential locales
+  build-essential locales doxygen
 
 RUN echo "en_US.UTF-8 UTF-8" >> /etc/locale.gen && \
   echo "zh_CN.UTF-8 UTF-8" >> /etc/locale.gen && locale-gen

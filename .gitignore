@@ -3,3 +3,6 @@ test
 *.zip
 *.so
 *.o
+*.raw
+*.tar.gz
+latex/

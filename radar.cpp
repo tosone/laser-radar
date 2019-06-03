@@ -6,6 +6,7 @@
 #include <string>
 #include <thread>
 
+#include <arpa/inet.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -19,51 +20,75 @@ Radar::Radar(std::string filename) {
   output_stream.open(filename, std::ios::out | std::ios::app | std::ofstream::binary);
 }
 
-int Radar::startup(int p) {
+int Radar::startup() {
   if (running) {
     return 0;
   }
   spdlog::info("LaserRadar Starting...");
-
-  port = p;
 
   if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
     spdlog::error("Create socket error");
     return -1;
   }
 
-  int opt = 1;
-  if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-    spdlog::error("Setting socket error");
-    return -1;
-  }
-  struct sockaddr_in address;
-  address.sin_family      = AF_INET;
-  address.sin_addr.s_addr = INADDR_ANY;
-  address.sin_port        = htons(port);
-  if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-    spdlog::error("Binding socket error");
-    return -1;
-  }
-  if (listen(server_fd, 3) < 0) {
-    spdlog::error("Listen specified port error");
+  struct sockaddr_in serv_addr;
+  memset(&serv_addr, '0', sizeof(serv_addr));
+
+  serv_addr.sin_family = AF_INET;
+  serv_addr.sin_port   = htons(8080);
+
+  if (inet_pton(AF_INET, "192.168.0.10", &serv_addr.sin_addr) <= 0) {
+    spdlog::error("Invalid address not supported");
     return -1;
   }
 
-  running = true;
+  // int opt = 1;
+  // if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
+  //   spdlog::error("Setting socket error");
+  //   return -1;
+  // }
+  // struct sockaddr_in address;
+  // address.sin_family      = AF_INET;
+  // address.sin_addr.s_addr = INADDR_ANY;
+  // address.sin_port        = htons(port);
+  // if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
+  //   spdlog::error("Binding socket error");
+  //   return -1;
+  // }
+  // if (listen(server_fd, 3) < 0) {
+  //   spdlog::error("Listen specified port error");
+  //   return -1;
+  // }
 
-  accept_thread = std::thread(
-      [](int server_fd, int *socket, bool *running, struct sockaddr_in *address) {
-        int addrlen = sizeof(address);
-        if ((*socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
-          spdlog::error("Got new connection error");
-          *running = false;
+  // accept_thread = std::thread(
+  //     [=](int server_fd, int *socket, struct sockaddr_in *address) {
+  //       int addrlen = sizeof(address);
+  //       if ((*socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
+  //         spdlog::error("Got new connection error");
+  //         running = false;
+  //       }
+  //       running = true;
+  //       spdlog::info("Got new connection");
+  //     },
+  //     server_fd, &laser_radar_socket, &address);
+
+  // accept_thread.detach();
+
+  connect_thread = std::thread(
+      [=]() {
+        while (true) {
+          if (connect(laser_radar_socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
+            spdlog::error("Laser Radar connect failed，please check laser radar status");
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+          } else {
+            break;
+          }
         }
-        spdlog::info("Got new connection");
-      },
-      server_fd, &laser_radar_socket, &running, &address);
+        running = true;
+        spdlog::info("Laser Radar connected");
+      });
 
-  accept_thread.detach();
+  connect_thread.detach();
 
   std::future<void> futureObj = read_thread_signal.get_future();
 
@@ -99,12 +124,11 @@ int Radar::startup(int p) {
 int Radar::teardown() {
   read_thread_signal.set_value();
   output_stream.close();
-  std::cout << "hello" << std::endl;
   return 0;
 }
 
 int Radar::sender(unsigned char command[], unsigned int length) {
-  if (laser_radar_socket <= 0) {
+  if (!running) {
     spdlog::error("No such a socket to laser radar");
     return -1;
   }
