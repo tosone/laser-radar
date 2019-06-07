@@ -12,19 +12,13 @@
  * This is an example of how to use the LaserRadar::Radar class.
 */
 
+// typedef void (*radar_frame_callback_t)(unsigned char *, unsigned int);
+
 /** LaserRadar 激光雷达的命名空间 */
 namespace LaserRadar {
 /** Radar 雷达 */
 class Radar {
 private:
-  // server socket session
-  // int server_fd;
-
-  // laser radar socket
-  // int laser_radar_socket;
-
-  // std::thread accept_thread;
-  // std::thread connect_thread;
   std::thread read_thread;
 
   std::promise<void> read_thread_signal;
@@ -36,7 +30,34 @@ private:
   std::string radar_ip;
   int radar_port;
 
+  std::chrono::steady_clock::time_point analysis_start_time = std::chrono::steady_clock::now();
+
+  uint64_t total_frame = 0;
+
 public:
+  /** 当雷达转动一圈，将雷达一圈的数据回调给外部
+   * @description 回调完成 buffer 将立刻被销毁，请处理完成之后再返回
+   * @param buffer 原始数据
+   * @param size 数据长度
+   */
+  void (*radar_frame_callback)(unsigned char *buffer, unsigned int size);
+
+  /** 雷达没发一次 UDP 包都会唤起这个回调
+   * @description 回调完成 buffer 将立刻被销毁，请处理完成之后再返回
+   * @param buffer 原始数据
+   * @param size 数据长度
+   */
+  void (*udp_frame_callback)(unsigned char *buffer, unsigned int size);
+
+  /** 开始分析 */
+  void analysis_start();
+
+  /** 结束分析 */
+  void analysis_stop();
+
+  /** 是否存储雷达发送的数据到文件 */
+  bool store_radar_frame = false;
+
   /** 雷达构造函数，初始化接受的 UDP 内容文件
    * @param filename 从雷达接受的内容存入此文件中
   */
@@ -118,6 +139,7 @@ public:
     /** 返回最强和第一次回波，如果最强和第一次回波相同，则返回第二强回波 */
     back_wave_filter_strong_first,
   };
+
   /** 回波设置
    * @param num 回波个数设置
    * @param filter 回波过滤
@@ -146,6 +168,7 @@ public:
     /** 激光能量模式：自动模式 */
     laser_energy_pattern_automatic,
   };
+
   /** 激光能量等级 */
   enum laser_energy_level {
     /** 第 1 级 */
@@ -165,6 +188,7 @@ public:
     /** 第 8 级 */
     laser_energy_level_8,
   };
+
   /** 激光能量设置
    * @param pattern 激光能量模式
    * @param level 激光能量等级
@@ -192,6 +216,7 @@ public:
     /** 高压加 1V */
     high_voltage_pattern_add,
   };
+
   /** 高压控制设置
    * @param pattern 高压模式
    * @param high_voltage 高压参数，600-2000
@@ -212,11 +237,13 @@ public:
    * @return 0 for success, -1 for failure
   */
   int set_rotate_stop();
+
   /** 仅设置转速
    * @param speed 转速
    * @return 0 for success, -1 for failure
   */
   int set_rotate_speed_raw(unsigned int speed);
+
   /** 开始转动
    * @return 0 for success, -1 for failure
   */

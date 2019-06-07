@@ -48,7 +48,6 @@ int Radar::startup() {
   read_thread = std::thread(
       [=](std::future<void> futureObj, std::ofstream output_stream) {
         unsigned int last_deg              = 0;
-        bool print_bool                    = false;
         unsigned char *pack_radar_frame    = (unsigned char *)malloc(10);
         unsigned int pack_radar_frame_size = 0;
         while (futureObj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout) {
@@ -58,71 +57,47 @@ int Radar::startup() {
           socklen_t addrLen = sizeof(struct sockaddr_in);
           ssize_t valread   = recvfrom(recv_fd, buffer, length, 0, (struct sockaddr *)&serv_addr, &addrLen);
           if (valread > 17) {
-            unsigned int deg = buffer[16] | buffer[17] << 8;
-            if (!start_radar_frame) {
-              if (deg == 0) {
+            if (udp_frame_callback != nullptr) {
+              udp_frame_callback(buffer, valread);
+            }
+            unsigned int deg = buffer[16] | buffer[17] << 8; // 将小端数据换算成 uint
+            if (!start_radar_frame) {                        // 雷达可能处于一个角度非零的状态，寻找零点
+              if (deg == 0) {                                // 确定是 零点 直接开始
                 start_radar_frame = true;
+                last_deg          = deg;
               } else {
-                if (deg >= last_deg) {
+                if (deg >= last_deg) { // 角度持续增大中
                   last_deg = deg;
                   continue;
-                } else {
+                } else { // 角度突然变小，即使不是零点，应该也在零点附近
                   last_deg          = deg;
                   start_radar_frame = true;
                 }
               }
-            } else {
-              // if (print_bool) {
-              //   std::cout << std::dec << deg << " " << last_deg << " before round" << std::endl;
-              // }
-              // std::cout << deg << " " << last_deg << std::endl;
-
+            } else { // 已经得到有序的开始，无需寻找零点
               if (deg >= last_deg) {
-                pack_radar_frame_size += valread;
+                pack_radar_frame_size += valread; // 计算需要重新分配的空间
                 pack_radar_frame = (unsigned char *)realloc(pack_radar_frame, pack_radar_frame_size);
-                memcpy(pack_radar_frame, buffer, valread);
+                // 将新得到的数据存入新申请的空间中，必须要确定开始复制的位置
+                memcpy(pack_radar_frame + (pack_radar_frame_size - valread), buffer, valread);
                 last_deg = deg;
               } else {
-                std::cout << std::dec << deg << " " << last_deg << " round " << pack_radar_frame_size << std::endl;
-                last_deg              = deg;
-                print_bool            = true;
+                // 可能需要补充雷达有微小的角度来回抖动，TODO：deg <<< last_deg 再进入此处
+                // std::cout << std::dec << deg << " " << last_deg << " round " << pack_radar_frame_size << std::endl;
+                last_deg = deg;
+                if (radar_frame_callback != nullptr) {
+                  radar_frame_callback(pack_radar_frame, pack_radar_frame_size); // 回调给外部一圈的雷达数据
+                }
                 pack_radar_frame_size = 0;
                 free(pack_radar_frame);
                 pack_radar_frame = (unsigned char *)malloc(10);
-                // start to pack
               }
             }
-
-            // std::cout << std::dec << "Server got msg length: " << valread << std::endl;
-            output_stream.write((char *)&buffer[0], valread);
-            output_stream.flush();
-            // std::cout << "Server got command: ";
-
-            // if ((unsigned int)(buffer[16]) < 10) {
-            //   std::cout << "0";
-            // }
-            // std::cout << std::hex << std::uppercase << (unsigned int)(buffer[16]);
-            // if ((unsigned int)(buffer[17]) < 10) {
-            //   std::cout << "0";
-            // }
-            // std::cout << std::hex << std::uppercase << (unsigned int)(buffer[17]);
-            // for (int index = 0; index < valread; index++) {
-            //   if (index == 2) std::cout << " ";
-            //   if (index == 3) std::cout << " ";
-            //   if (index == 9) std::cout << " ";
-            //   if (index == 10) std::cout << " ";
-            //   if (index == 13) std::cout << " ";
-            //   if (index == 14) std::cout << " ";
-            //   if (index == 16) std::cout << " ";
-            //   if (index == 18) std::cout << " ";
-            //   if (index == 20) std::cout << " ";
-            //   if (index == 21) std::cout << " ";
-            //   if ((unsigned int)(buffer[index]) < 10) {
-            //     std::cout << "0";
-            //   }
-            //   std::cout << std::hex << std::uppercase << (unsigned int)(buffer[index]);
-            // }
-            // std::cout << std::endl;
+            total_frame++;
+            if (store_radar_frame) { // 存储数据到文件
+              output_stream.write((char *)&buffer[0], valread);
+              output_stream.flush();
+            }
           }
           free(buffer);
         }
@@ -132,6 +107,24 @@ int Radar::startup() {
   read_thread.detach();
 
   return 0;
+}
+
+void Radar::analysis_start() {
+  analysis_start_time = std::chrono::steady_clock::now();
+}
+
+void Radar::analysis_stop() {
+  total_frame = 0;
+
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+
+  uint64_t count = std::chrono::duration_cast<std::chrono::milliseconds>(end - analysis_start_time).count();
+  std::cout.precision(1);
+
+  // std::cout << "total: " << total_frame << " frame" << std::endl;
+  std::cout << "duration: " << std::fixed << count / 1000 * 1.0 << " s" << std::endl;
+  std::cout << "frame per second: " << std::fixed << total_frame / count * 1.0 << " frame/s" << std::endl;
+  total_frame = 0;
 }
 
 int Radar::teardown() {
@@ -497,3 +490,31 @@ int Radar::set_rotate_speed(unsigned int speed) {
 }
 
 } // namespace LaserRadar
+
+// std::cout << "Server got command: ";
+
+// if ((unsigned int)(buffer[16]) < 10) {
+//   std::cout << "0";
+// }
+// std::cout << std::hex << std::uppercase << (unsigned int)(buffer[16]);
+// if ((unsigned int)(buffer[17]) < 10) {
+//   std::cout << "0";
+// }
+// std::cout << std::hex << std::uppercase << (unsigned int)(buffer[17]);
+// for (int index = 0; index < valread; index++) {
+//   if (index == 2) std::cout << " ";
+//   if (index == 3) std::cout << " ";
+//   if (index == 9) std::cout << " ";
+//   if (index == 10) std::cout << " ";
+//   if (index == 13) std::cout << " ";
+//   if (index == 14) std::cout << " ";
+//   if (index == 16) std::cout << " ";
+//   if (index == 18) std::cout << " ";
+//   if (index == 20) std::cout << " ";
+//   if (index == 21) std::cout << " ";
+//   if ((unsigned int)(buffer[index]) < 10) {
+//     std::cout << "0";
+//   }
+//   std::cout << std::hex << std::uppercase << (unsigned int)(buffer[index]);
+// }
+// std::cout << std::endl;

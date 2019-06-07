@@ -1,4 +1,5 @@
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <thread>
@@ -24,6 +25,29 @@ unsigned char *hexstr_to_char(const char *hexstr) {
   return chrs;
 }
 
+int radar_frame_num = 0;
+
+void callback(unsigned char *buffer, unsigned int size) {
+  char command[100] = {0};
+  char filename[15] = {0};
+  sprintf(filename, "%d.raw", radar_frame_num);
+  sprintf(command, "sh -c \"if [ ! -f out/%s ]; then rm out/%s; fi\"", filename, filename);
+  if (system(command) != 0) {
+    spdlog::error("cannot create output dir");
+  }
+  std::ofstream output_stream;
+  output_stream.open(filename, std::ios::out | std::ios::app | std::ofstream::binary);
+  output_stream.write((char *)&buffer[0], size);
+  output_stream.flush();
+  output_stream.close();
+}
+
+uint64_t udp_frame_num = 0;
+
+void udp_callback(unsigned char *buffer, unsigned int size) {
+  udp_frame_num++;
+}
+
 int main(int argc, char *argv[]) {
   char *output = "out.raw";
   char *ip     = "192.168.0.10";
@@ -42,31 +66,38 @@ int main(int argc, char *argv[]) {
       break;
     case 'h':
       printf("%s %s\n", argv[0], "usage:");
-      printf("%-5s\t%s\n", "-h", "show this help information");
-      printf("%-5s\t%s\n", "-o", "the radar frame output");
-      printf("%-5s\t%s\n", "-a", "show laser radar's ip");
-      printf("%-5s\t%s\n\n", "-p", "set laser radar's port");
+      printf("%-5s\t%s\n", "-h", "显示这些帮助信息");
+      printf("%-5s\t%s\n", "-o", "指定 UDP 帧输出的文件名");
+      printf("%-5s\t%s\n", "-a", "设置激光类的 ip 地址");
+      printf("%-5s\t%s\n\n", "-p", "设置激光雷达的端口");
       return 0;
     default:
       break;
     }
   }
 
+  if (system("sh -c \"if [ ! -d out ]; then mkdir out; fi\"") != 0) {
+    spdlog::error("cannot create output dir");
+  }
+
   Radar radar(output, std::string(ip), atoi(port)); // 初始化
 
+  radar.radar_frame_callback = callback;
   radar.startup(); // 连接雷达
 
+  radar.analysis_start();
+
   while (true) {
-    std::cout << "command > ";
+    std::cout << "> ";
     std::string command;
     std::cin >> command;
     std::cout << std::endl;
     if (command == "help") {
-      printf("%-10s%s\n", "send", "send specified command to laser radar");
-      printf("%-10s%s\n", "sendstr", "send specified command to laser radar");
-      printf("%-10s%s\n", "working", "send working mode");
-      printf("%-10s%s\n", "quit", "kill this programe");
-      printf("%-10s%s\n", "working", "send working mode");
+      printf("%-10s%s\n", "send", "发送指定的十六进制数到雷达。例如：send EEEE0101");
+      printf("%-10s%s\n", "sendStr", "发送指定的字符串到雷达。例如：sendStr ;UM=5;");
+      printf("%-10s%s\n", "getFrequency", "获取当前的帧频信息");
+      printf("%-10s%s\n", "store", "是否存储当前的 UDP 帧数据");
+      printf("%-10s%s\n", "quit", "结束程序");
     } else if (command == "send") {
       std::string param;
       std::cin >> param;
@@ -80,14 +111,22 @@ int main(int argc, char *argv[]) {
       std::cin >> param;
       if (param.length()) {
         if (param == "start") {
-          std::cout << "start" << std::endl;
+          radar.store_radar_frame = true;
+          radar_frame_num         = 0;
+          udp_frame_num           = 0;
+          radar.analysis_start();
         } else if (param == "stop") {
-          std::cout << "stop" << std::endl;
+          radar.store_radar_frame = false;
+          std::cout << "got radar frame num:" << radar_frame_num << std::endl;
+          std::cout << "got udp frame num:" << udp_frame_num << std::endl;
+          radar.analysis_stop();
         } else {
           std::cout << "invalid command" << std::endl;
         }
       }
-    } else if (command == "sendstr") {
+    } else if (command == "getFrequency") {
+      radar.analysis_stop();
+    } else if (command == "sendStr") {
       std::string param;
       std::cin >> param;
       if (param.length()) {
