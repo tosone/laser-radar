@@ -18,22 +18,29 @@ namespace LaserRadar {
 class Radar {
 private:
   // server socket session
-  int server_fd;
+  // int server_fd;
 
   // laser radar socket
-  int laser_radar_socket;
+  // int laser_radar_socket;
 
-  std::thread accept_thread;
-  std::thread connect_thread;
+  // std::thread accept_thread;
+  // std::thread connect_thread;
   std::thread read_thread;
 
   std::promise<void> read_thread_signal;
 
   std::ofstream output_stream;
 
+  bool start_radar_frame = false;
+
+  std::string radar_ip;
+  int radar_port;
+
 public:
-  /** 雷达构造函数，初始化接受的 UDP 内容文件 */
-  Radar(std::string);
+  /** 雷达构造函数，初始化接受的 UDP 内容文件
+   * @param filename 从雷达接受的内容存入此文件中
+  */
+  Radar(std::string filename, std::string, int);
 
   /** 查看是否连接雷达成功 */
   bool running = false;
@@ -78,8 +85,11 @@ public:
     /** 40kHz */
     frequency_num_40,
   };
-  /** 频率设置 */
-  int set_frequency(enum frequency_num);
+  /** 频率设置
+   * @param frequency 频率设置
+   * @return 0 for success, -1 for failure
+  */
+  int set_frequency(enum frequency_num frequency);
 
   /** 回波个数 */
   enum back_wave_num {
@@ -108,8 +118,12 @@ public:
     /** 返回最强和第一次回波，如果最强和第一次回波相同，则返回第二强回波 */
     back_wave_filter_strong_first,
   };
-  /** 回波设置 */
-  int set_back_wave(enum back_wave_num, enum back_wave_filter);
+  /** 回波设置
+   * @param num 回波个数设置
+   * @param filter 回波过滤
+   * @return 0 for success, -1 for failure
+  */
+  int set_back_wave(enum back_wave_num num, enum back_wave_filter filter);
 
   /** 方位角设置
    * @param start 起始角度

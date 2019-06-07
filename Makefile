@@ -17,7 +17,7 @@ all: clean
 
 .PHONY: test
 test: clean
-	$(GXX) $(CFLAGS) example.cpp radar.cpp $(LDFLAGS) -o $@
+	$(GXX) $(CFLAGS) example.cpp radar.cpp $(LDFLAGS) -o $@ -Wno-write-strings
 
 .PHONY: pack
 pack: all test
@@ -33,11 +33,11 @@ build:
 
 .PHONY: run
 run:
-	docker-compose up --force-recreate --remove-orphans --build -d
+	docker-compose up --force-recreate -d
 
 .PHONY: exec
 exec:
-	docker exec -e COLUMNS="`tput cols`" -e LINES="`tput lines`" -it $(docker_container) /usr/bin/fish
+	docker exec -e COLUMNS="`tput cols`" -e LINES="`tput lines`" -it $(docker_container) /bin/bash
 
 .PHONY: clean
 clean:

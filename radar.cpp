@@ -15,106 +15,119 @@
 #include <spdlog/spdlog.h>
 
 namespace LaserRadar {
-Radar::Radar(std::string filename) {
+Radar::Radar(std::string filename, std::string ip, int port) {
   spdlog::info("Initialize LaserRadar...");
+  radar_ip   = ip;
+  radar_port = port;
   output_stream.open(filename, std::ios::out | std::ios::app | std::ofstream::binary);
 }
 
 int Radar::startup() {
-  if (running) {
-    return 0;
-  }
   spdlog::info("LaserRadar Starting...");
-
-  if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0) {
+  int recv_fd = 0;
+  if ((recv_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP)) == 0) {
     spdlog::error("Create socket error");
     return -1;
   }
 
   struct sockaddr_in serv_addr;
-  memset(&serv_addr, '0', sizeof(serv_addr));
 
-  serv_addr.sin_family = AF_INET;
-  serv_addr.sin_port   = htons(8080);
+  bzero(&serv_addr, sizeof(struct sockaddr_in));
 
-  if (inet_pton(AF_INET, "192.168.0.10", &serv_addr.sin_addr) <= 0) {
-    spdlog::error("Invalid address not supported");
-    return -1;
-  }
-
-  // int opt = 1;
-  // if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt))) {
-  //   spdlog::error("Setting socket error");
-  //   return -1;
-  // }
-  // struct sockaddr_in address;
-  // address.sin_family      = AF_INET;
-  // address.sin_addr.s_addr = INADDR_ANY;
-  // address.sin_port        = htons(port);
-  // if (bind(server_fd, (struct sockaddr *)&address, sizeof(address)) < 0) {
-  //   spdlog::error("Binding socket error");
-  //   return -1;
-  // }
-  // if (listen(server_fd, 3) < 0) {
-  //   spdlog::error("Listen specified port error");
-  //   return -1;
-  // }
-
-  // accept_thread = std::thread(
-  //     [=](int server_fd, int *socket, struct sockaddr_in *address) {
-  //       int addrlen = sizeof(address);
-  //       if ((*socket = accept(server_fd, (struct sockaddr *)&address, (socklen_t *)&addrlen)) < 0) {
-  //         spdlog::error("Got new connection error");
-  //         running = false;
-  //       }
-  //       running = true;
-  //       spdlog::info("Got new connection");
-  //     },
-  //     server_fd, &laser_radar_socket, &address);
-
-  // accept_thread.detach();
-
-  connect_thread = std::thread(
-      [=]() {
-        while (true) {
-          if (connect(laser_radar_socket, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0) {
-            spdlog::error("Laser Radar connect failed，please check laser radar status");
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-          } else {
-            break;
-          }
-        }
-        running = true;
-        spdlog::info("Laser Radar connected");
-      });
-
-  connect_thread.detach();
+  serv_addr.sin_family      = AF_INET;
+  serv_addr.sin_port        = htons(8080);
+  serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
+  // inet_pton(AF_INET, "192.168.0.55", &serv_addr.sin_addr);
 
   std::future<void> futureObj = read_thread_signal.get_future();
 
+  if (bind(recv_fd, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) == -1) {
+    spdlog::error("bind error");
+  };
+
   read_thread = std::thread(
-      [](int *socket, std::future<void> futureObj, std::ofstream output_stream) {
+      [=](std::future<void> futureObj, std::ofstream output_stream) {
+        unsigned int last_deg              = 0;
+        bool print_bool                    = false;
+        unsigned char *pack_radar_frame    = (unsigned char *)malloc(10);
+        unsigned int pack_radar_frame_size = 0;
         while (futureObj.wait_for(std::chrono::milliseconds(1)) == std::future_status::timeout) {
-          unsigned char *buffer = (unsigned char *)malloc(1024 * sizeof(unsigned char *));
-          memset(buffer, 0, 1024 * sizeof(unsigned char *));
-          ssize_t valread = recv(*socket, buffer, 1024, 0);
-          if (valread > 0) {
-            std::cout << std::dec << "Server got msg length: " << valread << std::endl;
+          size_t length         = 1500 * sizeof(unsigned char);
+          unsigned char *buffer = (unsigned char *)malloc(length);
+          bzero(buffer, length);
+          socklen_t addrLen = sizeof(struct sockaddr_in);
+          ssize_t valread   = recvfrom(recv_fd, buffer, length, 0, (struct sockaddr *)&serv_addr, &addrLen);
+          if (valread > 17) {
+            unsigned int deg = buffer[16] | buffer[17] << 8;
+            if (!start_radar_frame) {
+              if (deg == 0) {
+                start_radar_frame = true;
+              } else {
+                if (deg >= last_deg) {
+                  last_deg = deg;
+                  continue;
+                } else {
+                  last_deg          = deg;
+                  start_radar_frame = true;
+                }
+              }
+            } else {
+              // if (print_bool) {
+              //   std::cout << std::dec << deg << " " << last_deg << " before round" << std::endl;
+              // }
+              // std::cout << deg << " " << last_deg << std::endl;
+
+              if (deg >= last_deg) {
+                pack_radar_frame_size += valread;
+                pack_radar_frame = (unsigned char *)realloc(pack_radar_frame, pack_radar_frame_size);
+                memcpy(pack_radar_frame, buffer, valread);
+                last_deg = deg;
+              } else {
+                std::cout << std::dec << deg << " " << last_deg << " round " << pack_radar_frame_size << std::endl;
+                last_deg              = deg;
+                print_bool            = true;
+                pack_radar_frame_size = 0;
+                free(pack_radar_frame);
+                pack_radar_frame = (unsigned char *)malloc(10);
+                // start to pack
+              }
+            }
+
+            // std::cout << std::dec << "Server got msg length: " << valread << std::endl;
             output_stream.write((char *)&buffer[0], valread);
             output_stream.flush();
-            std::cout << "Server got command: ";
-            for (int index = 0; index < valread; index++) {
-              if ((unsigned int)(buffer[index]) < 10) {
-                std::cout << "0";
-              }
-              std::cout << std::hex << std::uppercase << (unsigned int)(buffer[index]);
-            }
-            std::cout << std::endl;
+            // std::cout << "Server got command: ";
+
+            // if ((unsigned int)(buffer[16]) < 10) {
+            //   std::cout << "0";
+            // }
+            // std::cout << std::hex << std::uppercase << (unsigned int)(buffer[16]);
+            // if ((unsigned int)(buffer[17]) < 10) {
+            //   std::cout << "0";
+            // }
+            // std::cout << std::hex << std::uppercase << (unsigned int)(buffer[17]);
+            // for (int index = 0; index < valread; index++) {
+            //   if (index == 2) std::cout << " ";
+            //   if (index == 3) std::cout << " ";
+            //   if (index == 9) std::cout << " ";
+            //   if (index == 10) std::cout << " ";
+            //   if (index == 13) std::cout << " ";
+            //   if (index == 14) std::cout << " ";
+            //   if (index == 16) std::cout << " ";
+            //   if (index == 18) std::cout << " ";
+            //   if (index == 20) std::cout << " ";
+            //   if (index == 21) std::cout << " ";
+            //   if ((unsigned int)(buffer[index]) < 10) {
+            //     std::cout << "0";
+            //   }
+            //   std::cout << std::hex << std::uppercase << (unsigned int)(buffer[index]);
+            // }
+            // std::cout << std::endl;
           }
           free(buffer);
         }
       },
-      &laser_radar_socket, std::move(futureObj), std::move(output_stream));
+      std::move(futureObj), std::move(output_stream));
 
   read_thread.detach();
 
@@ -128,10 +141,20 @@ int Radar::teardown() {
 }
 
 int Radar::sender(unsigned char command[], unsigned int length) {
-  if (!running) {
-    spdlog::error("No such a socket to laser radar");
+  int sock      = socket(AF_INET, SOCK_DGRAM, 0);
+  const int opt = 1;
+  if (setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &opt, sizeof(opt)) < 0) {
+    spdlog::error("Error in setting Broadcast option");
     return -1;
   }
+
+  struct sockaddr_in sender_addr;
+  sender_addr.sin_family      = AF_INET;
+  sender_addr.sin_port        = htons(radar_port);
+  sender_addr.sin_addr.s_addr = inet_addr(radar_ip.c_str());
+
+  socklen_t len = sizeof(struct sockaddr_in);
+
   std::cout << "Sending command: ";
   for (int index = 0; index < length; index++) {
     if ((unsigned int)(command[index]) < 10) {
@@ -141,7 +164,7 @@ int Radar::sender(unsigned char command[], unsigned int length) {
   }
   std::cout << std::endl;
 
-  if (send(laser_radar_socket, command, length, 0) != (ssize_t)length) {
+  if (sendto(sock, command, length, 0, (sockaddr *)&sender_addr, len) != (ssize_t)length) {
     spdlog::error("Send msg failed");
     return -1;
   }

@@ -2,8 +2,8 @@ var searchData=
 [
   ['sender',['sender',['../class_laser_radar_1_1_radar.html#ac17a58adbbd9a565a5ab294a5c86231f',1,'LaserRadar::Radar']]],
   ['set_5fazimuth_5fangle',['set_azimuth_angle',['../class_laser_radar_1_1_radar.html#a29adbaedeb2ba569d1548a81bb96010d',1,'LaserRadar::Radar']]],
-  ['set_5fback_5fwave',['set_back_wave',['../class_laser_radar_1_1_radar.html#a8c5635fe75db616a46a4481fbef06dd0',1,'LaserRadar::Radar']]],
-  ['set_5ffrequency',['set_frequency',['../class_laser_radar_1_1_radar.html#a0110220cd5c4f71b6438b75d7c60ae72',1,'LaserRadar::Radar']]],
+  ['set_5fback_5fwave',['set_back_wave',['../class_laser_radar_1_1_radar.html#ac8b9d4421b989b50879686d1934d6b48',1,'LaserRadar::Radar']]],
+  ['set_5ffrequency',['set_frequency',['../class_laser_radar_1_1_radar.html#a155317b5351d0430d0c224afd2920481',1,'LaserRadar::Radar']]],
   ['set_5fhigh_5fvoltage',['set_high_voltage',['../class_laser_radar_1_1_radar.html#a35603607292bf93d40b70ca0a5d0dfa4',1,'LaserRadar::Radar']]],
   ['set_5flaser_5fenergy',['set_laser_energy',['../class_laser_radar_1_1_radar.html#aaabafb2bf840c97f470e59a9d01dc26a',1,'LaserRadar::Radar']]],
   ['set_5flaser_5fmachine',['set_laser_machine',['../class_laser_radar_1_1_radar.html#a3320865971152e9b5d4a25851e108370',1,'LaserRadar::Radar']]],
