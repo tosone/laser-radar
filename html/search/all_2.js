@@ -1,8 +1,7 @@
 var searchData=
 [
-  ['high_5fvoltage_5fpattern',['high_voltage_pattern',['../class_laser_radar_1_1_radar.html#a61d72e7969291ec5f75c6d353f1f7271',1,'LaserRadar::Radar']]],
-  ['high_5fvoltage_5fpattern_5fadd',['high_voltage_pattern_add',['../class_laser_radar_1_1_radar.html#a61d72e7969291ec5f75c6d353f1f7271ac805ca34883a4f45ed89611cfd644c12',1,'LaserRadar::Radar']]],
-  ['high_5fvoltage_5fpattern_5fminus',['high_voltage_pattern_minus',['../class_laser_radar_1_1_radar.html#a61d72e7969291ec5f75c6d353f1f7271a0952ace455102e606790508f237e3992',1,'LaserRadar::Radar']]],
-  ['high_5fvoltage_5fpattern_5fsoftware',['high_voltage_pattern_software',['../class_laser_radar_1_1_radar.html#a61d72e7969291ec5f75c6d353f1f7271a7450bdc5a5ec3c57285e5a890f18fc06',1,'LaserRadar::Radar']]],
-  ['high_5fvoltage_5fpattern_5ftemperature',['high_voltage_pattern_temperature',['../class_laser_radar_1_1_radar.html#a61d72e7969291ec5f75c6d353f1f7271a1dfb5b6c75448a4f07a2c4bf1a9823b4',1,'LaserRadar::Radar']]]
+  ['frequency_5fnum',['frequency_num',['../class_laser_radar_1_1_radar.html#a3e344fb166cabd9bd87f5370e2c0a749',1,'LaserRadar::Radar']]],
+  ['frequency_5fnum_5f10',['frequency_num_10',['../class_laser_radar_1_1_radar.html#a3e344fb166cabd9bd87f5370e2c0a749af57999ff280775f2dde8ccdeb0bbdb00',1,'LaserRadar::Radar']]],
+  ['frequency_5fnum_5f20',['frequency_num_20',['../class_laser_radar_1_1_radar.html#a3e344fb166cabd9bd87f5370e2c0a749ad70485ad5aa202d62f1e9de66f4bfeb5',1,'LaserRadar::Radar']]],
+  ['frequency_5fnum_5f40',['frequency_num_40',['../class_laser_radar_1_1_radar.html#a3e344fb166cabd9bd87f5370e2c0a749ab3ebc209346b26ce171f45b2c191d8af',1,'LaserRadar::Radar']]]
 ];

@@ -8,6 +8,13 @@
 
 #pragma once
 
+/*! \mainpage 激光雷达驱动
+ *
+ * \section intro_sec Introduction
+ *
+ * 监听激光雷达的 UDP 帧并记录下来，发送相应的 UDP 指令控制激光雷达。
+ */
+
 /** @example example.cpp
  * This is an example of how to use the LaserRadar::Radar class.
 */
