@@ -21,7 +21,7 @@ test: clean
 
 .PHONY: pack
 pack: all test
-	doxygen Doxyfile && tar zcvf radar.tar.gz html lib$(TAGET).so test radar.hpp
+	doxygen Doxyfile && tar zcvf radar.tar.gz docs lib$(TAGET).so test radar.hpp
 
 .PHONY: upgrade
 upgrade:
