@@ -6,3 +6,4 @@ test
 *.raw
 *.tar.gz
 latex/
+.DS_Store

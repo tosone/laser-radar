@@ -91,13 +91,12 @@ int main(int argc, char *argv[]) {
     std::cout << "> ";
     std::string command;
     std::cin >> command;
-    std::cout << std::endl;
     if (command == "help") {
-      printf("%-10s%s\n", "send", "发送指定的十六进制数到雷达。例如：send EEEE0101");
-      printf("%-10s%s\n", "sendStr", "发送指定的字符串到雷达。例如：sendStr ;UM=5;");
-      printf("%-10s%s\n", "getFrequency", "获取当前的帧频信息");
-      printf("%-10s%s\n", "store", "是否存储当前的 UDP 帧数据");
-      printf("%-10s%s\n", "quit", "结束程序");
+      printf("%-15s%s\n", "send", "发送指定的十六进制数到雷达。例如：send EEEE0101");
+      printf("%-15s%s\n", "sendStr", "发送指定的字符串到雷达。例如：sendStr ;UM=5;");
+      printf("%-15s%s\n", "getFrequency", "获取当前的帧频信息");
+      printf("%-15s%s\n", "store", "是否存储当前的 UDP 帧数据");
+      printf("%-15s%s\n", "quit", "结束程序");
     } else if (command == "send") {
       std::string param;
       std::cin >> param;
